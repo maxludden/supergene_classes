@@ -1,3 +1,4 @@
+# supergene_classes/main.py
 import os
 from chapter import (
     Chapter,
