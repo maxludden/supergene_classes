@@ -1,0 +1,28 @@
+[tool.pdm]
+
+[project]
+name = "supergene_classes"
+version = "0.1.0"
+description = "A collection of helper classes and functions to work with the Super Gene collections in MongoDB."
+authors = [
+    {name = "maxludden", email = "dev@maxludden.com"},
+]
+dependencies = [
+    "mongoengine>=0.24.2",
+    "pymongo>=4.3.3",
+    "sh>=1.14.3",
+    "ujson>=5.6.0",
+    "rich>=12.6.0",
+    "maxconsole>=0.4.0",
+    "maxprogress>=0.4.0",
+    "maxcolor>=1.0.0",
+    "loguru>=0.6.0",
+    "python-dotenv>=0.21.0",
+]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-pep517>=1.0"]
+build-backend = "pdm.pep517.api"
