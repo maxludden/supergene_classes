@@ -30,6 +30,8 @@ from log import log
 # Monkey patch QuerySet to allow for type hinting
 def no_op(self, x):
     return self
+
+
 QuerySet.__class_getitem__ = types.MethodType(no_op, QuerySet)
 
 
@@ -90,6 +92,7 @@ class ChapterNotFound(Exception):
 
 class Chapter(Document):
     """A MongoEngine Document class to work with the MongoDB collection `chapter`."""
+
     book = IntField(min_value=1, max_value=10, required=True)
     chapter = IntField(required=True, unique=True)
     csv_path = StringField()
@@ -106,11 +109,9 @@ class Chapter(Document):
     title = StringField(max_length=500, required=True)
     unparsed_text = StringField()
     url = URLField()
-    
 
     def __rich_repr__(self) -> None:
-        """A rich rendered representation of the Chapter.
-        """
+        """A rich rendered representation of the Chapter."""
         table = Table(
             title=Text(f"Chapter {self.chapter}", style="bold cyan"),
             show_header=True,
@@ -158,7 +159,7 @@ class Chapter(Document):
 
     def __csv__(self) -> str:
         """Export the given chapter to a Comma Separated Values (`CSV`) file.
-        
+
         Returns:
             csv (`str`): The given chapter as a CSV formatted string.
         """
@@ -167,7 +168,7 @@ class Chapter(Document):
     def __getattribute__(self, __name: str) -> Any:
         return super().__getattribute__(__name)
 
-    def _get_path(self, path: str = 'text', path_as_string: bool = False) -> str | Path:
+    def _get_path(self, path: str = "text", path_as_string: bool = False) -> str | Path:
         """Generate the filepaths to any of the formats of the chapter:
         - unparsed_text
         - text
@@ -184,6 +185,7 @@ class Chapter(Document):
         Returns:
             str | Path: _description_
         """
+
 
 class chapter_gen:
     """
