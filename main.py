@@ -1,9 +1,12 @@
 # supergene_classes/main.py
 import os
 from chapter import Chapter, chapter_gen
+from rich.text import Text
 from rich.markdown import Markdown
 from rich.style import Style
 from rich.panel import Panel
+from rich.table import Table, Column
+from rich.box import ROUNDED
 from maxconsole import get_console, get_theme
 from maxprogress import get_progress
 from maxcolor import gradient, gradient_panel
@@ -29,48 +32,117 @@ def sg(database: str = "SUPERGENE"):
         connect(name=database, host=URI)
 
 
-chapters = chapter_gen()
 
 
-def chapter_print(chapter: int, mode: str = ("md")) -> None:
+@log.catch
+def get_chapter_dict(chapter: int) -> dict:
     sg()
     doc = Chapter.objects(chapter=chapter).first()
-    if doc:
-        log.debug(f"Found Chapter {chapter} in MongoDB")
-        match mode:
-            case "text":
-                text = gradient(doc.text)
-                console.print(
-                    f"\n\n{doc.title}\n\n",
-                    justify="center",
-                    style=Style(
-                        color="#ffffff", bgcolor="#000000", underline=True, bold=True
-                    ),
-                )
-                console.print(
-                    f"Chapter {chapter}",
-                    justify="center",
-                    style=Style(
-                        color="#ffffff", bgcolor="#000000", bold=False, italic=True
-                    ),
-                )
-                console.print(text, justify="left")
-            case "md":
-                chapter_markdown = Markdown(
-                    doc.md,
-                    justify="left",
-                )
-                console.print(
-                    Panel(
-                        renderable=chapter_markdown,
-                        title=f"[bold bright_white]\n\n{doc.title}\n\n[/]",
-                        title_align="center",
-                        subtitle=f"[italic white]\n\nChapter {chapter}\n\n[/]",
-                        subtitle_align="center",
-                        style=Style(color="#00ff00", bgcolor="#212121", bold=False),
-                        border_style="bold bright_white",
-                    )
-                )
+    chapter_doc = Chapter(
+        book=doc.book,
+        chapter=doc.chapter,
+        csv_path=doc.csv_path,
+        filename=doc.filename,
+        html=doc.html,
+        html_path=doc.html_path,
+        json_path=doc.json_path,
+        md=doc.md,
+        md_path=doc.md_path,
+        section=doc.section,
+        tags=doc.tags,
+        text=doc.text,
+        text_path=doc.text_path,
+        title=doc.title,
+        unparsed_text=doc.unparsed_text,
+        url=doc.url
+    )
+    return chapter_doc
+ 
+@log.catch
+def print_paths(chapter: int=1):
+    sg()
+    doc = Chapter.objects(chapter=chapter).first()
+    
+    chapter_doc = Chapter(
+        book=doc.book,
+        chapter=doc.chapter,
+        csv_path=doc.csv_path,
+        filename=doc.filename,
+        html=doc.html,
+        html_path=doc.html_path,
+        json_path=doc.json_path,
+        md=doc.md,
+        md_path=doc.md_path,
+        section=doc.section,
+        tags=doc.tags,
+        text=doc.text,
+        text_path=doc.text_path,
+        title=doc.title,
+        unparsed_text=doc.unparsed_text,
+        url=doc.url
+    )
+    if chapter_doc:
+        table = Table(
+            header_style="bold #ffffff on #7f008b", 
+            style="#f200ff",
+            border_style="dim white", 
+            show_header=True, 
+            show_edge=True, 
+            show_lines=True,
+            row_styles=['bright', 'dim']
+        )
 
+        table.add_column(
+            f"Type of Filepath", 
+            justify='left', 
+            ratio=1, 
+            style=Style(
+                color='#7f008b',
+                bgcolor='#000000',
+                dim=True, 
+                italic=True,
+                bold=False
+            )
+        )
+        table.add_column(
+            f"Filepath", 
+            justify='left', 
+            ratio=4, 
+            style=Style(
+                color='#7f008b',
+                bgcolor='#000000',
+                bold=False
+            )
+        )
 
-chapter_print(4, "text")
+        csv_path = chapter_doc._generate_path('csv')
+        table.add_row("CSV Path", csv_path)
+
+        html_path = chapter_doc._generate_path('html')
+        table.add_row("HTML Path", html_path)
+
+        json_path = chapter_doc._generate_path('json')
+        table.add_row("JSON Path", json_path)
+
+        md_path = chapter_doc._generate_path('md')
+        table.add_row("Markdown Path", md_path)
+
+        text_path = chapter_doc._generate_path('text')
+        table.add_row("Text Path", text_path)
+
+    gradient_title = gradient(f"{doc.title}")
+    console.print(
+        Panel(
+            table,
+            title=gradient_title,
+            expand=False,
+            border_style=Style(
+                color="white",
+                dim = True
+            )
+        ),
+        justify='center'
+    )
+
+if __name__ == "__main__":
+    print_paths(1)

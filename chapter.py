@@ -16,7 +16,7 @@ from maxprogress import get_progress
 from mongoengine import Document, connect
 from mongoengine.fields import IntField, ListField, StringField, URLField
 from mongoengine.queryset.queryset import QuerySet
-from pymongo.errors import ConnectionFailure, ConnectionError
+from pymongo.errors import ConnectionFailure
 from rich.box import ROUNDED
 from rich.panel import Panel
 from rich.markdown import Markdown
@@ -91,6 +91,77 @@ def sg(database: str = "SUPERGENE") -> None:
 │                        Chapter                         │
 └────────────────────────────────────────────────────────┘
 """
+@log.catch
+def _create_subdir(
+    parent: Path | str = CWD/'books', 
+    subdir: str = 'text', 
+    mode: int = 0o755, 
+    parents: bool = True, 
+    exist_ok: bool = True) -> bool:
+    """Helper function to generate sub-directories for different file formats. Valid formats are:
+    - csv
+    - html
+    - json
+    - md
+    - text
+
+
+    Args:
+        parent (`Path`, `optional`): The parent directory. Defaults to `CWD/'books'`.
+        subdir (`str`, `optional`): The name of the sub-directory. Defaults to 'text'.
+        mode (`int`, `optional`): The permissions granted to the new directory. Defaults to `0o755`.
+        parents (`bool`, `optional`): Generate the sub-directories parent directories if they do not exist. Defaults to True.
+        exist_ok (`bool`, `optional`): Whether to ignore a sub-directory when it already exists or throw an error. Defaults to True (ignore existing directory).
+
+    Raises:
+        FileNotFoundError: Parent directory not found.
+        OSError: Unable to create sub-directory.
+    """
+    log.debug(f"Sub-directory does not exist: {str(subdir)}")
+
+    # Ensure that parent directory is pathlib `Path`
+    if not isinstance(parent, Path):
+        parent = Path(parent)
+
+    # Validate parent directory exists
+    if not parent.exists():
+        error_msg = f"Error creating sub-directory: {str(subdir)}"
+        error_cause = f"Error: Parent directory does not exist: {str(parent)}"
+        log.error(f"{error_msg}\n\n{error_msg}")
+        raise FileNotFoundError(f"{error_msg}\n\n{error_msg}")
+    
+    # Validate sub-directory
+    SUB_DIR = parent / subdir
+
+    # Attempt to create the missing sub-directory
+    if not SUB_DIR.exists():
+        sub_dir_warning = f"Sub-directory does not exist: {str(subdir)}."
+        sub_dir_create = f"Creating sub-directory..."
+        log.warning(f"{sub_dir_warning}\n\n{sub_dir_create}")
+        try:
+            SUB_DIR.mkdir(mode=0o775, parents=parents, exist_ok=exist_ok)
+            log.success(
+                gradient_panel(
+                    f"Created sub-directory: {str(subdir)}.",
+                    title=f"Created Sub-Directory!",
+                    justify_text='center',
+                    expand=True,
+                    width=80,
+                ),
+                justify='center'
+            )
+        except OSError as ose:
+            msg = f"Unable to create sub-directory {str(subdir)}"
+            log.error(msg)
+            raise ose(msg)
+
+    if SUB_DIR.exists():
+        return True
+    else:
+        return False
+    
+
+        
 
 
 class ChapterNotFound(Exception):
@@ -164,7 +235,25 @@ class Chapter(Document):
         Returns:
             json ('str'): The given chapter as a JSON formatted string.
         """
-        return self.to_json()
+        chapter_dict = {
+            "book": self.book,
+            "chapter": self.chapter,
+            "csv_path": self.csv_path,
+            "filename": self.filename,
+            "html": self.html,
+            "html_path": self.html_path,
+            "json_path": self.json_path,
+            "md": self.md,
+            "md_path": self.md_path,
+            "section": self.section,
+            "tags": self.tags,
+            "text": self.text,
+            "text_path": self.text_path,
+            "title": self.title,
+            "unparsed_text": self.unparsed_text,
+            "url": self.url
+        }
+        return dumps(chapter_dict, sort_keys=True, indent=4)
 
     def __csv__(self) -> str:
         """Export the given chapter to a Comma Separated Values (`CSV`) file.
@@ -177,7 +266,7 @@ class Chapter(Document):
     def __getattribute__(self, __name: str) -> Any:
         return super().__getattribute__(__name)
 
-    def _get_path(self, path: str = "text", path_as_string: bool = True) -> str | Path:
+    def _generate_path(self, path_type: str = "text", path_as_string: bool = True) -> str | Path:
         """Generate the filepaths to any of the formats of the chapter:
 
         - csv
@@ -197,20 +286,117 @@ class Chapter(Document):
         book = int(self.book)
         book_zfill = f"book{str(book).zfill(2)}"
         
+        # Current Working Directory
         CWD = Path.cwd()
+
+        # supergene_classes/books directory
         BOOKS_DIR = CWD / 'books'
         if not BOOKS_DIR.exists():
-            log.debug(f"The `books` directory does not exist. Creating `books` directory...")
-            try:
-                BOOKS_DIR.mkdir(mode=0o755, parents=True, exist_ok=True)
-                log.success(f"Created the `books` directory at filepath: {str(BOOKS_DIR)}")
-            except:
-                log.error(f"Unable to create the books directory.")
 
-        
+            # Create directory if it does not exist
+            _create_subdir(BOOKS_DIR, 'books')
+
+        # supergene_classes/books/book** directory
         BOOK_DIR = BOOKS_DIR / book_zfill
-        if not BOOK_DIR.exists()
-            BOOK_DIR.mkdir(mode=0o755, parents=True, exist_ok=True)
+        if not BOOK_DIR.exists():
+
+            # Create directory if it does not exist
+            _create_subdir(BOOKS_DIR, book_zfill)
+
+        log.debug(f"Valid parent directory: True\nValid sub-directory: True\n\nAble to generate filepath.")
+
+        # create book subdirectory if it does not exist
+        match path_type:
+            case 'csv':
+                CSV_DIR = BOOK_DIR / 'csv'
+
+                # Create the CSV Directory if it does not exist
+                if not CSV_DIR.exists():
+                    _create_subdir(BOOK_DIR, 'csv')
+
+                # Generate CSV filepath
+                path = CSV_DIR / f"{filename}.csv"
+
+                if not path_as_string:
+                    # Return path as `str`
+                    return path
+                else:
+                    # Return path as `Path`
+                    return str(path)
+
+            case 'html':
+                HTML_DIR = BOOK_DIR / 'html'
+
+                # Create the HTML Directory if it does not exist
+                if not HTML_DIR.exists():
+                    _create_subdir(BOOK_DIR, 'html')
+                
+                # Generate HTML filepath
+                path = HTML_DIR / f"{filename}.html"
+
+                if not path_as_string:
+                    # Return path as a `Path`
+                    return path
+                else:
+                    # Return path as a `str`
+                    return str(path)
+
+            case 'json':
+                JSON_DIR = BOOK_DIR / 'json'
+
+                # Create the JSON directory if it does not exist
+                if not JSON_DIR.exists():
+                    _create_subdir(BOOK_DIR, 'json')
+
+                # Generate JSON filepath
+                path = JSON_DIR / f"{filename}.json"
+
+                if not path_as_string:
+                    # Return path as a `Path`
+                    return path
+                else:
+                    # Return path as a `str`
+                    return str(path)
+
+            case 'md':
+                MD_DIR = BOOK_DIR / 'md'
+
+                # Generate MD Directory if it does not exist
+                if not MD_DIR.exists():
+                    _create_subdir(BOOK_DIR, 'md')
+
+                # Generate MD filepath
+                path = MD_DIR / f"{filename}.md"
+
+                if not path_as_string:
+                    # Return path as a `Path`
+                    return path
+                else:
+                    # Return path as a `str`
+                    return str(path)
+
+            case 'text':
+                TEXT_DIR = BOOK_DIR / 'text'
+                
+                # Create text directory if it does not exist
+                if not TEXT_DIR.exists():
+                    _create_subdir(BOOK_DIR, 'text')
+
+                # Generate Text filepath
+                path = TEXT_DIR / f"{filename}.txt"
+
+                if not path_as_string:
+                    # Return path as a `Path`
+                    return path
+                else:
+                    # Return path as a `str`
+                    return str(path)
+
+            case _:
+                # Default case for invalid types
+                msg = f"Invalid file format: {path_type}"
+                log.error(msg)
+                raise OSError(f"OSError: {msg}")
 
 def chapter_print(chapter: int, mode: str = ("md")) -> None:
     sg()

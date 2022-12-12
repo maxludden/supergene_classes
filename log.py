@@ -5,6 +5,7 @@ from os import environ
 from pathlib import Path
 from time import perf_counter
 from typing import Tuple
+import re
 
 from dotenv import load_dotenv
 from loguru import logger as log
@@ -99,7 +100,8 @@ def filename_log_patcher(record: dict) -> dict:
         record (`dict`): The patched record dict or a logged message with a formatted filename.
     """
     input_filename = record["file"].name
-    if input_filename == "<ipython-input-1-d1be94f332c5> ":
+    ipython_regex = r"\<ipython\-input\-.*?\>"
+    if re.match(ipython_regex, input_filename, re.I) != None:
         filename = "iPython"
     else:
         filename = input_filename
