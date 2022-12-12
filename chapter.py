@@ -16,9 +16,11 @@ from maxprogress import get_progress
 from mongoengine import Document, connect
 from mongoengine.fields import IntField, ListField, StringField, URLField
 from mongoengine.queryset.queryset import QuerySet
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, ConnectionError
 from rich.box import ROUNDED
+from rich.panel import Panel
 from rich.markdown import Markdown
+from rich.style import Style
 from rich.table import Table
 from rich.text import Text
 from rich.traceback import install as install_rich_traceback
@@ -74,6 +76,13 @@ def sg(database: str = "SUPERGENE") -> None:
         )
         raise ce(
             f"`Connection Error` occurred when attempting to connect to MongoDB: {database}"
+        )
+    except ConnectionFailure as cf:
+        log.error(
+            f"Function `sg()` raised a Pymongo `Connection Failure` when it attempted to connect to MongoDB: {database}"
+        )
+        raise ce(
+            f"`Connection Failure` occurred when attempting to connect to MongoDB: {database}"
         )
 
 
@@ -168,23 +177,81 @@ class Chapter(Document):
     def __getattribute__(self, __name: str) -> Any:
         return super().__getattribute__(__name)
 
-    def _get_path(self, path: str = "text", path_as_string: bool = False) -> str | Path:
+    def _get_path(self, path: str = "text", path_as_string: bool = True) -> str | Path:
         """Generate the filepaths to any of the formats of the chapter:
-        - unparsed_text
-        - text
-        - md
+
+        - csv
         - html
-
+        - json
+        - md
+        - text
+       
         Args:
-            path (`str`, `optional`): _description_. Defaults to 'file'.
-            path_as_string (bool, optional): _description_. Defaults to False.
-
-        Raises:
-            StopIteration: _description_
+            path (`str`, `optional`): Which type of format to find the path of. Defaults to 'file'.
+            path_as_string (bool, optional): Whether to return the path as pathlib `Path` or a `str`. Defaults to True, returns a string.
 
         Returns:
-            str | Path: _description_
+            path = (`str` | `Path`): The retrieve filepath.
         """
+        filename = self.filename
+        book = int(self.book)
+        book_zfill = f"book{str(book).zfill(2)}"
+        
+        CWD = Path.cwd()
+        BOOKS_DIR = CWD / 'books'
+        if not BOOKS_DIR.exists():
+            log.debug(f"The `books` directory does not exist. Creating `books` directory...")
+            try:
+                BOOKS_DIR.mkdir(mode=0o755, parents=True, exist_ok=True)
+                log.success(f"Created the `books` directory at filepath: {str(BOOKS_DIR)}")
+            except:
+                log.error(f"Unable to create the books directory.")
+
+        
+        BOOK_DIR = BOOKS_DIR / book_zfill
+        if not BOOK_DIR.exists()
+            BOOK_DIR.mkdir(mode=0o755, parents=True, exist_ok=True)
+
+def chapter_print(chapter: int, mode: str = ("md")) -> None:
+    sg()
+    doc = Chapter.objects(chapter=chapter).first()
+    if doc:
+        log.debug(f"Found Chapter {chapter} in MongoDB")
+        match mode:
+            case "text":
+                text = gradient(doc.text)
+                console.print(
+                    f"\n\n{doc.title}\n\n",
+                    justify="center",
+                    style=Style(
+                        color="#ffffff", bgcolor="#000000", underline=True, bold=True
+                    ),
+                )
+                console.print(
+                    f"Chapter {chapter}",
+                    justify="center",
+                    style=Style(
+                        color="#ffffff", bgcolor="#000000", bold=False, italic=True
+                    ),
+                )
+                console.print(text, justify="left")
+            case "md":
+                chapter_markdown = Markdown(
+                    doc.md,
+                    justify="left",
+                )
+                console.print(
+                    Panel(
+                        renderable=chapter_markdown,
+                        title=f"[bold bright_white]\n\n{doc.title}\n\n[/]",
+                        title_align="center",
+                        subtitle=f"[italic white]\n\nChapter {chapter}\n\n[/]",
+                        subtitle_align="center",
+                        style=Style(color="#00ff00", bgcolor="#212121", bold=False),
+                        border_style="bold bright_white",
+                    )
+                )
+
 
 
 class chapter_gen:
@@ -219,3 +286,5 @@ class chapter_gen:
 
     def __len__(self):
         return self.end - self.start + 1
+
+
