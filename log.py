@@ -1,4 +1,4 @@
-# src/log.py
+# supergene_classes/log.py
 
 from functools import wraps
 from os import environ
