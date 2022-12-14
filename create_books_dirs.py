@@ -16,10 +16,10 @@ CWD = Path.cwd()
 # console.print(gradient_panel(str(CWD), title="Current Working Directory"), justify='center')
 
 # Books Directory
-BOOKS_DIR = CWD / 'books'
+BOOKS_DIR = CWD / "books"
 
 # Books
-for book, x in enumerate(range(1,11)):
+for book, x in enumerate(range(1, 11)):
     if x < 10:
         book = f"book{str(book).zfill(2)}"
     elif x == 10:
@@ -27,10 +27,10 @@ for book, x in enumerate(range(1,11)):
 
     BOOK_DIR = BOOKS_DIR / book
     BOOK_DIR.mkdir(mode=0o755, parents=True, exist_ok=True)
-    
+
     with progress:
         progress.add_task(description="Creating sub-directories", total=5)
-    for dir in ['text', 'md', 'html', 'Styles', 'Images']:
+    for dir in ["csv", "text", "md", "html", "Styles", "Images"]:
         BOOK_SUBDIR = BOOK_DIR / dir
         try:
             BOOK_SUBDIR.mkdir(mode=0o777, parents=True, exist_ok=True)

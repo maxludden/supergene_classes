@@ -1,5 +1,6 @@
 # supergene_classes/main.py
 import os
+import csv
 from chapter import Chapter, chapter_gen
 from rich.text import Text
 from rich.markdown import Markdown
@@ -13,6 +14,7 @@ from maxcolor import gradient, gradient_panel
 from log import log
 from dotenv import load_dotenv
 from mongoengine import connect
+from io import StringIO
 
 load_dotenv()
 
@@ -38,7 +40,7 @@ def sg(database: str = "SUPERGENE"):
 def get_chapter_dict(chapter: int) -> dict:
     sg()
     doc = Chapter.objects(chapter=chapter).first()
-    chapter_doc = Chapter(
+    chapter_dict = Chapter(
         book=doc.book,
         chapter=doc.chapter,
         csv_path=doc.csv_path,
@@ -56,8 +58,9 @@ def get_chapter_dict(chapter: int) -> dict:
         unparsed_text=doc.unparsed_text,
         url=doc.url
     )
-    return chapter_doc
- 
+    return chapter_dict
+
+    
 @log.catch
 def print_paths(chapter: int=1):
     sg()
@@ -145,4 +148,9 @@ def print_paths(chapter: int=1):
     )
 
 if __name__ == "__main__":
-    print_paths(1)
+    chapters = chapter_gen()
+    for chapter in chapters:
+        chapter_dict = get_chapter_dict(chapter)
+        fieldnames = chapter_dict.keys()
+        csv_stream = StringIO()
+        csv_writer = csv.DictWriter(csv_stream, fieldnames=fieldnames)

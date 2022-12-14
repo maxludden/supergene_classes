@@ -5,6 +5,7 @@ import re
 import sys
 import types
 import csv
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,7 @@ from rich.markdown import Markdown
 from rich.style import Style
 from rich.table import Table
 from rich.text import Text
+from rich.pretty import Pretty
 from rich.traceback import install as install_rich_traceback
 from sh import Command
 from ujson import dump, dumps, load, loads
@@ -32,8 +34,7 @@ from log import log
 # Monkey patch QuerySet to allow for type hinting
 def no_op(self, x):
     return self
-
-
+# The following line allows Doc.objects to not be flagged as an error by mypy
 QuerySet.__class_getitem__ = types.MethodType(no_op, QuerySet)
 
 
@@ -161,12 +162,8 @@ def _create_subdir(
         return False
     
 
-        
-
-
 class ChapterNotFound(Exception):
     """A custom exception to raise when the queried chapter does not exist."""
-
     pass
 
 
@@ -189,6 +186,9 @@ class Chapter(Document):
     title = StringField(max_length=500, required=True)
     unparsed_text = StringField()
     url = URLField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs) 
 
     def __rich_repr__(self) -> None:
         """A rich rendered representation of the Chapter."""
@@ -229,6 +229,68 @@ class Chapter(Document):
         """
         return self.text
 
+    def __dict__(self) -> dict:
+        """Write the given chapters keys and values to a python dictionary.
+
+        Returns:
+            chapter_dict (`dict`): A dictionary containing all of the given chapters data.
+        """
+        chapter_dict = {
+            "book": self.book,
+            "chapter": self.chapter,
+            "csv_path": self.csv_path,
+            "filename": self.filename,
+            "html": self.html,
+            "html_path": self.html_path,
+            "json_path": self.json_path,
+            "md": self.md,
+            "md_path": self.md_path,
+            "section": self.section,
+            "tags": self.tags,
+            "text": self.text,
+            "text_path": self.text_path,
+            "title": self.title,
+            "unparsed_text": self.unparsed_text,
+            "url": self.url
+        }
+        log.debug(
+            Panel(
+                Pretty(chapter_dict),
+                justify='left',
+                title=f"Chapter {self.chapter}"
+            ),
+            justify='center'
+        )
+        return chapter_dict
+
+    
+    def to_cvs(self) -> str:
+        """Write the given chapter to a CSV File from MongoDB."""
+        chapter_dict = dict(self.to_dict())
+        csv_stream = StringIO('')
+
+        fieldnames = chapter_dict.keys()
+        log.debug(", ".join(fieldnames))
+
+        # CSV_PATH = chapter_dict["csv_path"]
+        # log.debug(f"Chapter {self.chapter}'s CSV_PATH: {CSV_PATH}")
+
+        csv_writer = csv.DictWriter(csv_stream, fieldnames=fieldnames, doublequote=True, escapechar="")
+        # Write the header
+        csv_writer.writeheader()
+
+        # Write the data
+        csv_writer.writerow(**chapter_dict)
+
+        # Get the CSV string
+        csv_string = csv_stream.getvalue()
+        log.debug(f"Chapter {self.chapter}'s CSV String: \n\n{csv_string}")
+
+        # Close the stream
+        csv_stream.close()
+
+        return csv_string
+
     def __json__(self) -> str:
         """Export the given chapter to a JavaScript Object Notation (`JSON`) string.
 
@@ -255,26 +317,34 @@ class Chapter(Document):
         }
         return dumps(chapter_dict, sort_keys=True, indent=4)
 
-    def __csv__(self) -> str:
-        """Export the given chapter to a Comma Separated Values (`CSV`) file.
-
-        Returns:
-            csv (`str`): The given chapter as a CSV formatted string.
-        """
-        return self.to_csv
 
     def __getattribute__(self, __name: str) -> Any:
         return super().__getattribute__(__name)
 
+
+    def _generate_filename(self, save: bool = True) -> str:
+        """Generate the filename of the given chapter.
+
+        Raises:
+            Exception: Invalid value for `self.chapter`, unable to generate filename.
+        """
+        if not self.chapter:
+            raise Exception(f"Unable to genereate filename for {self.json()}")
+        else:
+            chapter_zfill = str(self.chapter).zfill(4)
+            filename = f"chapter-{chapter_zfill}"
+            if save:
+                self.filename = filename
+                self.save()
+            return filename
+
+
     def _generate_path(self, path_type: str = "text", path_as_string: bool = True) -> str | Path:
         """Generate the filepaths to any of the formats of the chapter:
 
-        - csv
-        - html
-        - json
-        - md
-        - text
-       
+             - csv               - json              - text
+             - html              - md
+
         Args:
             path (`str`, `optional`): Which type of format to find the path of. Defaults to 'file'.
             path_as_string (bool, optional): Whether to return the path as pathlib `Path` or a `str`. Defaults to True, returns a string.
@@ -282,6 +352,9 @@ class Chapter(Document):
         Returns:
             path = (`str` | `Path`): The retrieve filepath.
         """
+        if not self.filename:
+            log.info(f"Chapter {self.chapter} does not have a filename. Generating filename...")
+            self.filename = self._generate_filename()
         filename = self.filename
         book = int(self.book)
         book_zfill = f"book{str(book).zfill(2)}"
@@ -439,12 +512,10 @@ def chapter_print(chapter: int, mode: str = ("md")) -> None:
                 )
 
 
-
 class chapter_gen:
     """
     Generator for chapter numbers.
     """
-
     def __init__(self, start: int = 1, end: int = 3462):
         self.start = start
         self.end = end
@@ -474,3 +545,17 @@ class chapter_gen:
         return self.end - self.start + 1
 
 
+def generate_paths(chapter: int, path_type: str | None = None) -> None:
+
+    """Update the paths for each chapter.
+    Args:
+        chapter (`int`)": The given chapter.
+    """
+    sg()
+    doc = Chapter.objects(chapter=chapter).first()
+    chapter_zfill = str(doc.chapter).zfill(4)
+    if not doc.filename:
+        doc.filename = f"chapter-{chapter_zfill}"
+        doc.save()
+        log.debug(f"Updated Chapter {chapter}'s filename: {doc.filename}")
+    

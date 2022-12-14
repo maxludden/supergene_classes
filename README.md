@@ -37,7 +37,6 @@ poetry add supergene_classes
 
 `supergene_classes` contains custom classes for MongoEngine Documents and a number of helper functions to access them.
 
-
 #### Classes
 
 ##### Chapter
@@ -48,6 +47,7 @@ from mongoengine.fields import (
     StringField,
     IntField,
     URLField,
-    
+
 )
 Chapter(Document):
+```

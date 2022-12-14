@@ -137,18 +137,30 @@ sinks = log.configure(
             backtrace=True,
         ),
         dict(
-            sink=(lambda msg: console.log( msg, markup=True, highlight=True, log_locals=False)),
+            sink=(
+                lambda msg: console.log(
+                    msg, markup=True, highlight=True, log_locals=False
+                )
+            ),
             level="SUCCESS",
             format="Run {extra[run]} | {time:hh:mm:ss:SSS A} | {extra[filename]: ^13} |  Line {line: ^5} | {level: ^8} -> [success]{message}[/success]",
         ),
-        dict( # Rich Console Log > WARNING
-            sink=(lambda msg: console.log( msg, markup=True, highlight=True, log_locals=True)),
+        dict(  # Rich Console Log > WARNING
+            sink=(
+                lambda msg: console.log(
+                    msg, markup=True, highlight=True, log_locals=True
+                )
+            ),
             level="WARNING",
             format="Run {extra[run]} | {time:hh:mm:ss:SSS A} | {extra[filename]: ^13} |  Line {line: ^5} | {level: ^8} -> [warning]{message}[/warning]",
-            backtrace=True
+            backtrace=True,
         ),
         dict(  # . Rich Console Log > ERROR
-            sink=( lambda msg: console.log(msg, markup=True, highlight=True, log_locals=True)),
+            sink=(
+                lambda msg: console.log(
+                    msg, markup=True, highlight=True, log_locals=True
+                )
+            ),
             level="ERROR",
             format="Run {extra[run]} | {time:hh:mm:ss:SSS A} | {extra[filename]: ^13} |  Line {line: ^5} | {level: ^8} -> [error]{message}[/error]",
             diagnose=True,
@@ -156,13 +168,17 @@ sinks = log.configure(
             backtrace=True,
         ),
         dict(  # . Rich Console Log > Critical
-            sink=( lambda msg: console.log(msg, markup=True, highlight=True, log_locals=True)),
+            sink=(
+                lambda msg: console.log(
+                    msg, markup=True, highlight=True, log_locals=True
+                )
+            ),
             level="CRITICAL",
             format="Run {extra[run]} | {time:hh:mm:ss:SSS A} | {extra[filename]: ^13} |  Line {line: ^5} | {level: ^8} -> [bold #ffffff on #5e0000]{message}[/]",
             diagnose=True,
             catch=True,
             backtrace=True,
-        )
+        ),
     ],
     patcher=filename_log_patcher,
     extra={
