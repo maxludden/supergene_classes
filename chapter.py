@@ -198,7 +198,15 @@ class Chapter(Document):
     url = URLField()
 
 
-    def __init__(self, chapter: int, text: str, title: str, url: str) -> Self:
+    def __init__(self, book: int, chapter: int, cvs_path:str, 
+    filename: str, html:str, html_path: str, json_path: str, 
+    md: str, md_path: str, section: int, tags: list[str], 
+    text: str, text_path: str, title: str, unparsed_text: str, url: str) -> Self:
+        """Un-parameterized constructor for the Chapter class."""
+        super().__init__(book=book, chapter=chapter, cvs_path=cvs_path, 
+        filename=filename, html=html, html_path=html_path, json_path=json_path, 
+        md=md, md_path=md_path, section=section, tags=tags, 
+        text=text, text_path=text_path, title=title, unparsed_text=unparsed_text, url=url)
 
 
 
@@ -290,7 +298,7 @@ class Chapter(Document):
         """Generate the filename of the given chapter.
 
         Raises:
-            Exception: Invalid value for `self.chapter`, unable to generat 
+            Exception: Invalid value for `self.chapter`, unable to generate filename.
         """
         if not self.chapter:
             raise Exception(f"Unable to genereate filename for {self.json()}")
